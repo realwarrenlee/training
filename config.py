@@ -1,0 +1,3 @@
+from src.config import DATA_DIR, ROOT_DIR, TEST_PARQUET, TRAIN_PARQUET
+
+__all__ = ["ROOT_DIR", "DATA_DIR", "TRAIN_PARQUET", "TEST_PARQUET"]

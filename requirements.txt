@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+python-multipart
+torch==2.5.1
+transformers==4.46.2
+librosa==0.10.2
+numpy==1.26.4
+soundfile==0.12.1
+resampy==0.4.3
+pandas==2.2.0
+scipy
+clearml
+evaluate
+jiwer
+accelerate>=0.26.0
+--extra-index-url https://download.pytorch.org/whl/cu121

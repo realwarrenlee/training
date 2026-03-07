@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whisper STT API</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; min-height: 100vh; font-size: 17px; }
+
+  header {
+    background: #1a1d27;
+    border-bottom: 1px solid #2a2d3e;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 { font-size: 18px; font-weight: 600; color: #fff; }
+  header .badge { background: #6c63ff22; color: #a78bfa; font-size: 11px; padding: 2px 8px; border-radius: 99px; border: 1px solid #6c63ff55; }
+  .version { color: #555; font-size: 12px; margin-left: auto; }
+
+  .layout { display: flex; height: calc(100vh - 57px); }
+
+  nav {
+    width: 220px;
+    background: #13151f;
+    border-right: 1px solid #1e2130;
+    overflow-y: auto;
+    padding: 12px 0;
+    flex-shrink: 0;
+  }
+  nav .section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #555;
+    padding: 10px 16px 4px;
+  }
+  nav button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    transition: background .15s, color .15s;
+    border-left: 3px solid transparent;
+  }
+  nav button:hover { background: #1e2130; color: #ddd; }
+  nav button.active { background: #1e2130; color: #a78bfa; border-left-color: #a78bfa; }
+  nav button .method {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 3px;
+    min-width: 32px;
+    text-align: center;
+  }
+  .get { background: #0e4a2e; color: #4ade80; }
+  .post { background: #2d2000; color: #facc15; }
+  .delete { background: #3a0a0a; color: #f87171; }
+
+  main { flex: 1; overflow-y: auto; padding: 24px; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .panel-header { margin-bottom: 20px; }
+  .panel-header h2 { font-size: 20px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .panel-header p { color: #666; font-size: 13px; }
+  .endpoint-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #1a1d27;
+    border: 1px solid #2a2d3e;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    font-family: monospace;
+  }
+
+  .card {
+    background: #1a1d27;
+    border: 1px solid #2a2d3e;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h3 { font-size: 14px; font-weight: 600; color: #ccc; margin-bottom: 14px; }
+
+  label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
+  input[type=text], input[type=number], input[type=file], select, textarea {
+    width: 100%;
+    background: #0f1117;
+    border: 1px solid #2a2d3e;
+    border-radius: 6px;
+    color: #e0e0e0;
+    padding: 10px 14px;
+    font-size: 16px;
+    margin-bottom: 12px;
+    outline: none;
+    font-family: inherit;
+    transition: border-color .2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #6c63ff; }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .btn {
+    padding: 9px 20px;
+    border-radius: 7px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: opacity .2s, transform .1s;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: #6c63ff; color: #fff; }
+  .btn-danger { background: #dc2626; color: #fff; }
+  .btn-success { background: #16a34a; color: #fff; }
+  .btn-ghost { background: #1e2130; color: #ccc; border: 1px solid #2a2d3e; }
+
+  .response-box {
+    background: #0a0c12;
+    border: 1px solid #1e2130;
+    border-radius: 8px;
+    padding: 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #a0e0a0;
+    white-space: pre-wrap;
+    word-break: break-all;
+    min-height: 80px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .response-box.error { color: #f87171; }
+  .response-box.loading { color: #888; font-style: italic; }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    background: #555;
+  }
+  .status-dot.ok { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+  .status-dot.error { background: #f87171; }
+
+  .base-url-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #1a1d27;
+    border: 1px solid #2a2d3e;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 20px;
+    font-size: 12px;
+  }
+  .base-url-bar span { color: #666; }
+  .base-url-bar input { margin: 0; border: none; background: none; padding: 0; font-size: 13px; flex: 1; }
+  .base-url-bar input:focus { border: none; }
+
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tag { background: #1e2130; color: #888; font-size: 11px; padding: 2px 8px; border-radius: 99px; }
+
+  @media (max-width: 700px) {
+    nav { width: 56px; }
+    nav button span.label { display: none; }
+    .row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+  <h1>Whisper STT API</h1>
+
+</header>
+
+<div class="layout">
+<nav id="nav">
+  <div class="section-label">System</div>
+  <button class="active" onclick="show('health')"><span class="method get">GET</span> <span class="label">Health</span></button>
+  <button onclick="show('status')"><span class="method get">GET</span> <span class="label">Status</span></button>
+
+  <div class="section-label">Model</div>
+  <button onclick="show('load')"><span class="method post">POST</span> <span class="label">Load</span></button>
+  <button onclick="show('unload')"><span class="method post">POST</span> <span class="label">Unload</span></button>
+  <button onclick="show('models')"><span class="method get">GET</span> <span class="label">Models</span></button>
+  <button onclick="show('active-model')"><span class="method get">GET</span> <span class="label">Active</span></button>
+  <button onclick="show('switch-model')"><span class="method post">POST</span> <span class="label">Switch</span></button>
+
+  <div class="section-label">Inference</div>
+  <button onclick="show('transcribe')"><span class="method post">POST</span> <span class="label">Transcribe</span></button>
+  <button onclick="show('evaluate')"><span class="method post">POST</span> <span class="label">Evaluate</span></button>
+
+  <div class="section-label">Training</div>
+  <button onclick="show('train-list')"><span class="method get">GET</span> <span class="label">List Jobs</span></button>
+  <button onclick="show('train-start')"><span class="method post">POST</span> <span class="label">Start Job</span></button>
+  <button onclick="show('train-status')"><span class="method get">GET</span> <span class="label">Job Status</span></button>
+  <button onclick="show('train-cancel')"><span class="method delete">DEL</span> <span class="label">Cancel Job</span></button>
+  <button onclick="show('upload-dataset')"><span class="method post">POST</span> <span class="label">Upload DS</span></button>
+
+  <div class="section-label">Pipeline</div>
+  <button onclick="show('pipeline-list')"><span class="method get">GET</span> <span class="label">List Runs</span></button>
+  <button onclick="show('pipeline-start')"><span class="method post">POST</span> <span class="label">Start Run</span></button>
+  <button onclick="show('pipeline-get')"><span class="method get">GET</span> <span class="label">Get Run</span></button>
+  <button onclick="show('pipeline-promote')"><span class="method post">POST</span> <span class="label">Promote</span></button>
+</nav>
+
+<main>
+  <div class="base-url-bar">
+    <span>Base URL:</span>
+    <input type="text" id="baseUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+    <span id="pingDot" class="status-dot"></span>
+  </div>
+
+  <!-- HEALTH -->
+  <div class="panel active" id="panel-health">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method get" style="padding:2px 7px;border-radius:4px">GET</span> /health</div>
+      <h2>Health Check</h2>
+      <p>Check whether the API is alive and responding.</p>
+    </div>
+    <button class="btn btn-primary" onclick="req('GET','/health','resp-health')">Send Request</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-health">—</div></div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="panel" id="panel-status">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method get" style="padding:2px 7px;border-radius:4px">GET</span> /status</div>
+      <h2>Status</h2>
+      <p>Get current server and model status.</p>
+    </div>
+    <button class="btn btn-primary" onclick="req('GET','/status','resp-status')">Send Request</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-status">—</div></div>
+  </div>
+
+  <!-- LOAD -->
+  <div class="panel" id="panel-load">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method post" style="padding:2px 7px;border-radius:4px">POST</span> /load</div>
+      <h2>Load Model</h2>
+      <p>Load a Whisper model into memory.</p>
+    </div>
+    <button class="btn btn-primary" onclick="req('POST','/load','resp-load')">Send Request</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-load">—</div></div>
+  </div>
+
+  <!-- UNLOAD -->
+  <div class="panel" id="panel-unload">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method post" style="padding:2px 7px;border-radius:4px">POST</span> /unload</div>
+      <h2>Unload Model</h2>
+      <p>Unload the currently loaded model to free memory.</p>
+    </div>
+    <button class="btn btn-danger" onclick="req('POST','/unload','resp-unload')">Unload Model</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-unload">—</div></div>
+  </div>
+
+  <!-- TRANSCRIBE -->
+  <div class="panel" id="panel-transcribe">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method post" style="padding:2px 7px;border-radius:4px">POST</span> /transcribe</div>
+      <h2>Transcribe</h2>
+      <p>Upload an audio file and transcribe it using the loaded model.</p>
+    </div>
+    <div class="card">
+      <h3>Audio File</h3>
+      <label>Audio File (wav, mp3, flac, …)</label>
+      <input type="file" id="transcribe-file" accept="audio/*">
+    </div>
+    <button class="btn btn-success" onclick="reqForm('POST','/transcribe','resp-transcribe',['file:transcribe-file'])">Transcribe</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-transcribe">—</div></div>
+  </div>
+
+  <!-- EVALUATE -->
+  <div class="panel" id="panel-evaluate">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method post" style="padding:2px 7px;border-radius:4px">POST</span> /evaluate</div>
+      <h2>Evaluate</h2>
+      <p>Evaluate transcription against a reference.</p>
+    </div>
+    <div class="card">
+      <h3>Request Form</h3>
+      <label>Audio File</label>
+      <input type="file" id="eval-file" accept="audio/*">
+      <label>Reference (ground truth)</label>
+      <textarea id="eval-ref" placeholder="The quick brown fox..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="reqForm('POST','/evaluate','resp-evaluate',['file:eval-file','reference:eval-ref'])">Evaluate</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-evaluate">—</div></div>
+  </div>
+
+  <!-- MODELS LIST -->
+  <div class="panel" id="panel-models">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method get" style="padding:2px 7px;border-radius:4px">GET</span> /models</div>
+      <h2>List Models</h2>
+      <p>List all available models on the server.</p>
+    </div>
+    <button class="btn btn-primary" onclick="req('GET','/models','resp-models')">Fetch Models</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-models">—</div></div>
+  </div>
+
+  <!-- ACTIVE MODEL -->
+  <div class="panel" id="panel-active-model">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method get" style="padding:2px 7px;border-radius:4px">GET</span> /models/active</div>
+      <h2>Get Active Model</h2>
+      <p>Retrieve info about the currently active model.</p>
+    </div>
+    <button class="btn btn-primary" onclick="req('GET','/models/active','resp-active-model')">Fetch Active</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-active-model">—</div></div>
+  </div>
+
+  <!-- SWITCH MODEL -->
+  <div class="panel" id="panel-switch-model">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method post" style="padding:2px 7px;border-radius:4px">POST</span> /models/active</div>
+      <h2>Switch Model</h2>
+      <p>Switch the active model to a different one.</p>
+    </div>
+    <div class="card">
+      <h3>Request Body</h3>
+      <label>Model Name</label>
+      <input type="text" id="switch-model" placeholder="e.g. large-v3">
+    </div>
+    <button class="btn btn-primary" onclick="reqJSON('POST','/models/active','resp-switch-model',{model_id:v('switch-model')})">Switch</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-switch-model">—</div></div>
+  </div>
+
+  <!-- TRAIN LIST -->
+  <div class="panel" id="panel-train-list">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method get" style="padding:2px 7px;border-radius:4px">GET</span> /train</div>
+      <h2>List Training Jobs</h2>
+      <p>List all training jobs and their statuses.</p>
+    </div>
+    <button class="btn btn-primary" onclick="req('GET','/train','resp-train-list')">Fetch Jobs</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-train-list">—</div></div>
+  </div>
+
+  <!-- TRAIN START -->
+  <div class="panel" id="panel-train-start">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method post" style="padding:2px 7px;border-radius:4px">POST</span> /train</div>
+      <h2>Start Training Job</h2>
+      <p>Launch a new fine-tuning training job.</p>
+    </div>
+    <div class="card">
+      <h3>Training Config</h3>
+      <div class="row">
+        <div>
+          <label>Model ID</label>
+          <input type="text" id="train-model" placeholder="e.g. base">
+        </div>
+        <div>
+          <label>Batch Size</label>
+          <input type="number" id="train-batch" value="4" min="1">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Num Epochs</label>
+          <input type="number" id="train-epochs" value="3" min="1">
+        </div>
+        <div>
+          <label>Learning Rate</label>
+          <input type="text" id="train-lr" value="1e-5">
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-success" onclick="reqJSON('POST','/train','resp-train-start',{model_id:v('train-model') || 'openai/whisper-small',num_epochs:Number(v('train-epochs')),batch_size:Number(v('train-batch')),learning_rate:Number(v('train-lr'))})">Start Training</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-train-start">—</div></div>
+  </div>
+
+  <!-- TRAIN STATUS -->
+  <div class="panel" id="panel-train-status">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method get" style="padding:2px 7px;border-radius:4px">GET</span> /train/{job_id}</div>
+      <h2>Get Training Status</h2>
+    </div>
+    <div class="card">
+      <label>Job ID</label>
+      <input type="text" id="train-status-id" placeholder="job_abc123">
+    </div>
+    <button class="btn btn-primary" onclick="req('GET',`/train/${v('train-status-id')}`,'resp-train-status')">Get Status</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-train-status">—</div></div>
+  </div>
+
+  <!-- TRAIN CANCEL -->
+  <div class="panel" id="panel-train-cancel">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method delete" style="padding:2px 7px;border-radius:4px">DELETE</span> /train/{job_id}</div>
+      <h2>Cancel Training Job</h2>
+    </div>
+    <div class="card">
+      <label>Job ID</label>
+      <input type="text" id="train-cancel-id" placeholder="job_abc123">
+    </div>
+    <button class="btn btn-danger" onclick="req('DELETE',`/train/${v('train-cancel-id')}`,'resp-train-cancel')">Cancel Job</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-train-cancel">—</div></div>
+  </div>
+
+  <!-- UPLOAD DATASET -->
+  <div class="panel" id="panel-upload-dataset">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method post" style="padding:2px 7px;border-radius:4px">POST</span> /train/dataset</div>
+      <h2>Upload Dataset</h2>
+      <p>Upload one or more audio files to create a parquet dataset.</p>
+    </div>
+    <div class="card">
+      <label>Audio File(s)</label>
+      <input type="file" id="dataset-file" accept="audio/*" multiple>
+    </div>
+    <button class="btn btn-success" onclick="reqForm('POST','/train/dataset','resp-upload-dataset',['files:dataset-file'])">Upload</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-upload-dataset">—</div></div>
+  </div>
+
+  <!-- PIPELINE LIST -->
+  <div class="panel" id="panel-pipeline-list">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method get" style="padding:2px 7px;border-radius:4px">GET</span> /pipeline/run</div>
+      <h2>List Pipeline Runs</h2>
+    </div>
+    <button class="btn btn-primary" onclick="req('GET','/pipeline/run','resp-pipeline-list')">Fetch Runs</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-pipeline-list">—</div></div>
+  </div>
+
+  <!-- PIPELINE START -->
+  <div class="panel" id="panel-pipeline-start">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method post" style="padding:2px 7px;border-radius:4px">POST</span> /pipeline/run</div>
+      <h2>Start Pipeline Run</h2>
+    </div>
+    <div class="card">
+      <label>Pipeline Config (JSON)</label>
+      <textarea id="pipeline-config" rows="14" placeholder='{
+  "dataset": {
+    "source_type": "local_parquet",
+    "train_path": "./dataset/raw/train.parquet",
+    "test_path": "./dataset/raw/test.parquet"
+  },
+  "split": {"train": 0.9, "test": 0.1, "seed": 42},
+  "audio": {"target_sr": 16000, "preprocess": false},
+  "text": {"normalization": "atc_number_aware"},
+  "model": {"base_model": "openai/whisper-small", "language": "English", "decode_language": "en"},
+  "training": {"epochs": 3, "batch_size": 4, "learning_rate": 1e-5, "eval_steps": 500, "save_steps": 500},
+  "reporting": {"clearml": true},
+  "promote_on_success": false
+}'></textarea>
+    </div>
+    <button class="btn btn-success" onclick="reqRaw('POST','/pipeline/run','resp-pipeline-start',v('pipeline-config'))">Start Run</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-pipeline-start">—</div></div>
+  </div>
+
+  <!-- PIPELINE GET -->
+  <div class="panel" id="panel-pipeline-get">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method get" style="padding:2px 7px;border-radius:4px">GET</span> /pipeline/run/{run_id}</div>
+      <h2>Get Pipeline Run</h2>
+    </div>
+    <div class="card">
+      <label>Run ID</label>
+      <input type="text" id="pipeline-run-id" placeholder="run_abc123">
+    </div>
+    <button class="btn btn-primary" onclick="req('GET',`/pipeline/run/${v('pipeline-run-id')}`,'resp-pipeline-get')">Get Run</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-pipeline-get">—</div></div>
+  </div>
+
+  <!-- PIPELINE PROMOTE -->
+  <div class="panel" id="panel-pipeline-promote">
+    <div class="panel-header">
+      <div class="endpoint-tag"><span class="method post" style="padding:2px 7px;border-radius:4px">POST</span> /pipeline/run/{run_id}/promote</div>
+      <h2>Promote Pipeline Model</h2>
+    </div>
+    <div class="card">
+      <label>Run ID</label>
+      <input type="text" id="pipeline-promote-id" placeholder="run_abc123">
+    </div>
+    <button class="btn btn-success" onclick="reqJSON('POST',`/pipeline/run/${v('pipeline-promote-id')}/promote`,'resp-pipeline-promote',{})">Promote</button>
+    <div style="margin-top:14px"><label>Response</label><div class="response-box" id="resp-pipeline-promote">—</div></div>
+  </div>
+
+</main>
+</div>
+
+<script>
+const v = id => document.getElementById(id)?.value ?? '';
+const base = () => document.getElementById('baseUrl').value.replace(/\/$/, '');
+
+function show(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function setResp(id, data, isErr) {
+  const el = document.getElementById(id);
+  el.className = 'response-box' + (isErr ? ' error' : '');
+  el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+}
+
+async function req(method, path, respId) {
+  setResp(respId, 'Loading…', false);
+  document.getElementById(respId).className = 'response-box loading';
+  try {
+    const r = await fetch(base() + path, { method });
+    const d = await r.json().catch(() => r.text());
+    setResp(respId, d, !r.ok);
+  } catch(e) { setResp(respId, 'Error: ' + e.message, true); }
+}
+
+async function reqJSON(method, path, respId, body) {
+  setResp(respId, 'Loading…', false);
+  document.getElementById(respId).className = 'response-box loading';
+  try {
+    const r = await fetch(base() + path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json().catch(() => r.text());
+    setResp(respId, d, !r.ok);
+  } catch(e) { setResp(respId, 'Error: ' + e.message, true); }
+}
+
+async function reqRaw(method, path, respId, rawJson) {
+  setResp(respId, 'Loading…', false);
+  document.getElementById(respId).className = 'response-box loading';
+  try {
+    const r = await fetch(base() + path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: rawJson
+    });
+    const d = await r.json().catch(() => r.text());
+    setResp(respId, d, !r.ok);
+  } catch(e) { setResp(respId, 'Error: ' + e.message, true); }
+}
+
+async function reqForm(method, path, respId, fields) {
+  setResp(respId, 'Loading…', false);
+  document.getElementById(respId).className = 'response-box loading';
+  const fd = new FormData();
+  for (const f of fields) {
+    const [key, elId] = f.split(':');
+    const el = document.getElementById(elId);
+    if (!el) continue;
+    if (el.type === 'file' && el.files?.length) {
+      for (const file of el.files) fd.append(key, file);
+    }
+    else if (el.value) fd.append(key, el.value);
+  }
+  try {
+    const r = await fetch(base() + path, { method, body: fd });
+    const d = await r.json().catch(() => r.text());
+    setResp(respId, d, !r.ok);
+  } catch(e) { setResp(respId, 'Error: ' + e.message, true); }
+}
+
+// Ping health on load
+(async () => {
+  try {
+    const r = await fetch(base() + '/health', { signal: AbortSignal.timeout(3000) });
+    document.getElementById('pingDot').className = 'status-dot ' + (r.ok ? 'ok' : 'error');
+  } catch { document.getElementById('pingDot').className = 'status-dot error'; }
+})();
+</script>
+</body>
+</html>
